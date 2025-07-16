@@ -9,21 +9,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const errorMessageDiv = document.getElementById('errorMessage');
     const errorTextSpan = document.getElementById('errorText');
 
-    // Get or generate a unique user ID for this session
+    // Obtener o generar un ID de usuario único para esta sesión
     let userId = localStorage.getItem('exam_app_userId');
     if (!userId) {
-        userId = crypto.randomUUID(); // Generates a unique user ID
+        userId = crypto.randomUUID(); // Genera un ID de usuario único
         localStorage.setItem('exam_app_userId', userId);
     }
-    userIdDisplay.textContent = userId.substring(0, 8) + '...'; // Display a short version of the ID
+    userIdDisplay.textContent = userId.substring(0, 8) + '...'; // Mostrar una versión corta del ID
 
-    // --- Socket.IO Configuration ---
-    // Connects to the current host where the Flask app is served
+    // --- Configuración de Socket.IO ---
+    // Se conecta al host actual donde se sirve la aplicación Flask
     const socket = io();
 
-    let currentFiles = {}; // Object to store files by ID for easy updates
+    let currentFiles = {}; // Objeto para almacenar archivos por ID para fácil actualización
 
-    // --- Utility Functions ---
+    // --- Funciones de Utilidad ---
     function showMessage(element, message, isError = false) {
         element.textContent = message;
         if (isError) {
@@ -45,11 +45,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-   function displayError(message) {
-    console.error("Error recibido en frontend:", message); // <-- Añade esta línea
-    errorTextSpan.textContent = message;
-    showMessage(errorTextSpan, message, true);
-}
+    function displayError(message) {
+        console.error("Error recibido en frontend:", message); // Línea de depuración
+        errorTextSpan.textContent = message;
+        showMessage(errorTextSpan, message, true);
+    }
 
     function clearError() {
         hideMessage(errorTextSpan, true);
@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function setUploadingState(isUploading) {
         fileInput.disabled = isUploading;
-        uploadFileBtn.disabled = isUploading || fileInput.files.length === 0; // Enable/disable the single button
+        uploadFileBtn.disabled = isUploading || fileInput.files.length === 0; // Habilitar/deshabilitar el botón único
         if (isUploading) {
             showMessage(uploadingMessage, 'Por favor, espere mientras se suben los archivos...');
         } else {
@@ -66,14 +66,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderFiles() {
-        // Convert the object to an array and sort it by timestamp (most recent first)
+        // Convertir el objeto a un array y ordenarlo por timestamp (más reciente primero)
         const sortedFiles = Object.values(currentFiles).sort((a, b) => {
             const dateA = new Date(a.timestamp);
             const dateB = new Date(b.timestamp);
             return dateB.getTime() - dateA.getTime();
         });
 
-        filesList.innerHTML = ''; // Clear the current list
+        filesList.innerHTML = ''; // Limpiar la lista actual
 
         if (sortedFiles.length === 0) {
             noFilesMessage.classList.remove('hidden');
@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const uploadedByShort = file.uploadedBy ? file.uploadedBy.substring(0, 8) + '...' : 'Desconocido';
                 const fileDate = file.timestamp ? new Date(file.timestamp).toLocaleString() : 'N/A';
 
-                // Display the relative path if it exists, otherwise just the file name
+                // Mostrar la ruta relativa si existe, de lo contrario, solo el nombre del archivo
                 const displayName = file.relativePath || file.fileName;
 
                 li.innerHTML = `
@@ -118,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 filesList.appendChild(li);
             });
 
-            // Attach event listeners to the new buttons
+            // Adjuntar event listeners a los nuevos botones
             filesList.querySelectorAll('button[data-action="download"]').forEach(button => {
                 button.addEventListener('click', (e) => {
                     const fileId = e.target.dataset.id;
@@ -126,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (file) {
                         const link = document.createElement('a');
                         link.href = file.fileContent;
-                        link.download = file.fileName; // Download with the original file name
+                        link.download = file.fileName; // Descargar con el nombre original del archivo
                         document.body.appendChild(link);
                         link.click();
                         document.body.removeChild(link);
@@ -146,11 +146,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Event Listener for the single Upload button ---
+    // --- Event Listener para el botón único de Subida ---
     uploadFileBtn.addEventListener('click', () => handleFileUpload());
 
     async function handleFileUpload() {
-        const files = fileInput.files; // files is now a FileList (can contain multiple files/directories)
+        const files = fileInput.files; // files es ahora una FileList (puede contener múltiples archivos/directorios)
         if (files.length === 0) {
             displayError("Por favor, selecciona al menos un archivo o un directorio.");
             return;
@@ -166,60 +166,60 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 0; i < totalFiles; i++) {
             const file = files[i];
 
-            // Skip directories if the browser includes them in the FileList
-            // file.isDirectory is a non-standard property but useful
-            if (file.isDirectory) { 
+            // Omitir directorios si el navegador los incluye en la FileList
+            // file.isDirectory es una propiedad no estándar pero útil
+            if (file.isDirectory) {
                 filesSkippedCount++;
                 continue;
             }
 
-            // --- Increased file size limit to 5 MB (5 * 1024 * 1024 bytes) ---
+            // --- Límite de tamaño de archivo (5 MB) ---
             if (file.size > 5 * 1024 * 1024) { // 5 MB
                 console.warn(`Archivo ${file.name} es demasiado grande (${(file.size / (1024 * 1024)).toFixed(2)}MB). Saltando.`);
                 filesSkippedCount++;
                 continue;
             }
             
-            // Use a Promise to handle the asynchronous reading of each file
+            // Usar una Promesa para manejar la lectura asíncrona de cada archivo
             await new Promise((resolve) => {
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    const fileContent = e.target.result; // Content in Base64
+                    const fileContent = e.target.result; // Contenido en Base64
                     socket.emit('upload_file', {
                         fileName: file.name,
                         fileContent: fileContent,
                         uploadedBy: userId,
                         timestamp: new Date().toISOString(),
-                        relativePath: file.webkitRelativePath || file.name // Send the relative path
+                        relativePath: file.webkitRelativePath || file.name // Enviar la ruta relativa
                     });
                     filesUploadedCount++;
-                    resolve(); // Resolve the promise when the file has been emitted
+                    resolve(); // Resolver la promesa cuando el archivo ha sido emitido
                 };
                 reader.onerror = () => {
                     console.error(`Error al leer el archivo ${file.name}.`);
                     filesSkippedCount++;
-                    resolve(); // Resolve the promise even if there's an error to continue with the next file
+                    resolve();
                 };
-                reader.readAsDataURL(file); // Read the file as Base64
+                reader.readAsDataURL(file); // Leer el archivo como Base64
             });
         }
 
-        // Clear the input after processing all files
+        // Limpiar el input después de procesar todos los archivos
         fileInput.value = '';
         setUploadingState(false);
 
         if (filesSkippedCount > 0) {
-            // Display a summary message if some files were skipped
+            // Mostrar un mensaje de resumen si algunos archivos fueron omitidos
             displayError(`Se subieron ${filesUploadedCount} de ${totalFiles} archivos. Se saltaron ${filesSkippedCount} archivos (demasiado grandes o directorios).`);
         } else {
-            clearError(); // Clear any previous error message if all files were uploaded successfully
+            clearError(); // Limpiar cualquier mensaje de error previo si todos los archivos se subieron con éxito
         }
     }
 
-    // --- Socket.IO Event Handlers ---
+    // --- Manejadores de Eventos de Socket.IO ---
     socket.on('connect', () => {
         console.log('Conectado al servidor Socket.IO');
-        // When connected, the server will automatically emit 'files_list'
+        // Cuando se conecta, el servidor emitirá 'files_list' automáticamente
     });
 
     socket.on('disconnect', () => {
@@ -228,7 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     socket.on('files_list', (filesArray) => {
-        // Receive the full list of files on connect or update
+        // Recibir la lista completa de archivos al conectar o actualizar
         currentFiles = {};
         filesArray.forEach(file => {
             currentFiles[file.id] = file;
@@ -238,27 +238,25 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     socket.on('file_updated', (file) => {
-        // A file has been created or modified
         currentFiles[file.id] = file;
         renderFiles();
         clearError();
     });
 
     socket.on('file_deleted', (fileId) => {
-        // A file has been deleted
         delete currentFiles[fileId];
         renderFiles();
         clearError();
     });
 
     socket.on('error', (message) => {
-        console.error('Server error:', message);
+        console.error('Error del servidor:', message);
         displayError(`Error del servidor: ${message}`);
     });
 
-    // Disable upload button initially if no file is selected
+    // Deshabilitar el botón de subida inicialmente si no hay archivo seleccionado
     fileInput.addEventListener('change', () => {
         uploadFileBtn.disabled = fileInput.files.length === 0;
     });
-    uploadFileBtn.disabled = true; // Disable on initial load
+    uploadFileBtn.disabled = true; // Deshabilitar al cargar inicialmente
 });
