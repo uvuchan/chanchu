@@ -81,8 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
             noFilesMessage.classList.add('hidden');
             sortedFiles.forEach(file => {
                 const li = document.createElement('li');
-                li.className = `flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-white dark:bg-gray-700 rounded-lg shadow-sm
-                                border border-gray-200 dark:border-gray-600 hover:shadow-md transition-shadow duration-200`;
+                li.className = `file-item`; // Usar clase personalizada para el elemento de lista
                 
                 const uploadedByShort = file.uploadedBy ? file.uploadedBy.substring(0, 8) + '...' : 'Desconocido';
                 const fileDate = file.timestamp ? new Date(file.timestamp).toLocaleString() : 'N/A';
@@ -91,26 +90,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 const displayName = file.relativePath || file.fileName;
 
                 li.innerHTML = `
-                    <div class="flex-grow mb-2 sm:mb-0">
-                        <p class="font-medium text-lg text-blue-700 dark:text-blue-300 break-words">
+                    <div class="file-info">
+                        <p class="file-name">
                             ${displayName}
                         </p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">
-                            Subido por: <span class="font-mono">${uploadedByShort}</span>
+                        <p class="file-meta">
+                            Subido por: <span class="file-user-id">${uploadedByShort}</span>
                         </p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                        <p class="file-meta">
                             Fecha: ${fileDate}
                         </p>
                     </div>
-                    <div class="flex space-x-2 mt-2 sm:mt-0">
-                        <button data-id="${file.id}" data-action="download"
-                                class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold rounded-full shadow-md
-                                       transition duration-300 ease-in-out transform hover:scale-105">
+                    <div class="file-actions">
+                        <button data-id="${file.id}" data-action="download" class="btn btn-download">
                             Descargar
                         </button>
-                        <button data-id="${file.id}" data-action="delete"
-                                class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold rounded-full shadow-md
-                                       transition duration-300 ease-in-out transform hover:scale-105">
+                        <button data-id="${file.id}" data-action="delete" class="btn btn-delete">
                             Eliminar
                         </button>
                     </div>
@@ -173,8 +168,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 continue;
             }
 
-            // --- Límite de tamaño de archivo (5 MB) ---
-            if (file.size > 5 * 1024 * 1024) { // 5 MB
+            // --- Límite de tamaño de archivo (AUMENTADO A 20 MB) ---
+            if (file.size > 20 * 1024 * 1024) { // 20 MB
                 console.warn(`Archivo ${file.name} es demasiado grande (${(file.size / (1024 * 1024)).toFixed(2)}MB). Saltando.`);
                 filesSkippedCount++;
                 continue;
