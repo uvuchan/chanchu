@@ -168,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 continue;
             }
 
-            // --- Límite de tamaño de archivo (AUMENTADO A 20 MB) ---
+            // --- Límite de tamaño de archivo (20 MB) ---
             if (file.size > 20 * 1024 * 1024) { // 20 MB
                 console.warn(`Archivo ${file.name} es demasiado grande (${(file.size / (1024 * 1024)).toFixed(2)}MB). Saltando.`);
                 filesSkippedCount++;
