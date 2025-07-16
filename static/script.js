@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Elementos del DOM ---
+    // --- DOM Elements ---
     const userIdDisplay = document.getElementById('userIdDisplay');
     const fileInput = document.getElementById('fileInput');
     const uploadFileBtn = document.getElementById('uploadFileBtn');
@@ -9,19 +9,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const errorMessageDiv = document.getElementById('errorMessage');
     const errorTextSpan = document.getElementById('errorText');
 
+    // Get or generate a unique user ID for this session
     let userId = localStorage.getItem('exam_app_userId');
     if (!userId) {
-        userId = crypto.randomUUID(); // Genera un ID de usuario único
+        userId = crypto.randomUUID(); // Generates a unique user ID
         localStorage.setItem('exam_app_userId', userId);
     }
-    userIdDisplay.textContent = userId.substring(0, 8) + '...'; // Muestra una parte del ID
+    userIdDisplay.textContent = userId.substring(0, 8) + '...'; // Display a short version of the ID
 
-    // --- Configuración de Socket.IO ---
-    const socket = io(); // Se conecta al host actual
+    // --- Socket.IO Configuration ---
+    // Connects to the current host where the Flask app is served
+    const socket = io();
 
-    let currentFiles = {}; // Objeto para almacenar archivos por ID para fácil actualización
+    let currentFiles = {}; // Object to store files by ID for easy updates
 
-    // --- Funciones de Utilidad ---
+    // --- Utility Functions ---
     function showMessage(element, message, isError = false) {
         element.textContent = message;
         if (isError) {
@@ -54,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function setUploadingState(isUploading) {
         fileInput.disabled = isUploading;
-        uploadFileBtn.disabled = isUploading || fileInput.files.length === 0; // Habilita/deshabilita el botón único
+        uploadFileBtn.disabled = isUploading || fileInput.files.length === 0; // Enable/disable the single button
         if (isUploading) {
             showMessage(uploadingMessage, 'Por favor, espere mientras se suben los archivos...');
         } else {
@@ -63,14 +65,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderFiles() {
-        // Convierte el objeto a un array y lo ordena por timestamp (más reciente primero)
+        // Convert the object to an array and sort it by timestamp (most recent first)
         const sortedFiles = Object.values(currentFiles).sort((a, b) => {
             const dateA = new Date(a.timestamp);
             const dateB = new Date(b.timestamp);
             return dateB.getTime() - dateA.getTime();
         });
 
-        filesList.innerHTML = ''; // Limpia la lista actual
+        filesList.innerHTML = ''; // Clear the current list
 
         if (sortedFiles.length === 0) {
             noFilesMessage.classList.remove('hidden');
@@ -84,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const uploadedByShort = file.uploadedBy ? file.uploadedBy.substring(0, 8) + '...' : 'Desconocido';
                 const fileDate = file.timestamp ? new Date(file.timestamp).toLocaleString() : 'N/A';
 
-                // Mostrar la ruta relativa si existe, de lo contrario, solo el nombre del archivo
+                // Display the relative path if it exists, otherwise just the file name
                 const displayName = file.relativePath || file.fileName;
 
                 li.innerHTML = `
@@ -115,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 filesList.appendChild(li);
             });
 
-            // Adjuntar event listeners a los nuevos botones
+            // Attach event listeners to the new buttons
             filesList.querySelectorAll('button[data-action="download"]').forEach(button => {
                 button.addEventListener('click', (e) => {
                     const fileId = e.target.dataset.id;
@@ -123,7 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (file) {
                         const link = document.createElement('a');
                         link.href = file.fileContent;
-                        link.download = file.fileName; // Descarga con el nombre original del archivo
+                        link.download = file.fileName; // Download with the original file name
                         document.body.appendChild(link);
                         link.click();
                         document.body.removeChild(link);
@@ -143,11 +145,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Event Listener para el botón único de Subida ---
+    // --- Event Listener for the single Upload button ---
     uploadFileBtn.addEventListener('click', () => handleFileUpload());
 
     async function handleFileUpload() {
-        const files = fileInput.files; // Ahora files es una FileList
+        const files = fileInput.files; // files is now a FileList (can contain multiple files/directories)
         if (files.length === 0) {
             displayError("Por favor, selecciona al menos un archivo o un directorio.");
             return;
@@ -163,56 +165,60 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 0; i < totalFiles; i++) {
             const file = files[i];
 
-            // Ignorar directorios si el navegador los incluye en la FileList
-            if (file.isDirectory) { // file.isDirectory es una propiedad no estándar pero útil
+            // Skip directories if the browser includes them in the FileList
+            // file.isDirectory is a non-standard property but useful
+            if (file.isDirectory) { 
                 filesSkippedCount++;
                 continue;
             }
 
-            if (file.size > 500 * 1024) { // Límite de 500KB para Base64
-                console.warn(`Archivo ${file.name} es demasiado grande (${(file.size / 1024).toFixed(2)}KB). Saltando.`);
+            // --- Increased file size limit to 5 MB (5 * 1024 * 1024 bytes) ---
+            if (file.size > 5 * 1024 * 1024) { // 5 MB
+                console.warn(`Archivo ${file.name} es demasiado grande (${(file.size / (1024 * 1024)).toFixed(2)}MB). Saltando.`);
                 filesSkippedCount++;
                 continue;
             }
             
-            // Usar una Promise para manejar la lectura asíncrona de cada archivo
+            // Use a Promise to handle the asynchronous reading of each file
             await new Promise((resolve) => {
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    const fileContent = e.target.result; // Contenido en Base64
+                    const fileContent = e.target.result; // Content in Base64
                     socket.emit('upload_file', {
                         fileName: file.name,
                         fileContent: fileContent,
                         uploadedBy: userId,
                         timestamp: new Date().toISOString(),
-                        relativePath: file.webkitRelativePath || file.name // Envía la ruta relativa
+                        relativePath: file.webkitRelativePath || file.name // Send the relative path
                     });
                     filesUploadedCount++;
-                    resolve(); // Resuelve la promesa cuando el archivo ha sido emitido
+                    resolve(); // Resolve the promise when the file has been emitted
                 };
                 reader.onerror = () => {
                     console.error(`Error al leer el archivo ${file.name}.`);
                     filesSkippedCount++;
-                    resolve(); // Resuelve la promesa incluso si hay error para continuar con el siguiente archivo
+                    resolve(); // Resolve the promise even if there's an error to continue with the next file
                 };
-                reader.readAsDataURL(file); // Lee el archivo como Base64
+                reader.readAsDataURL(file); // Read the file as Base64
             });
         }
 
-        // Limpia el input después de procesar todos los archivos
+        // Clear the input after processing all files
         fileInput.value = '';
         setUploadingState(false);
 
         if (filesSkippedCount > 0) {
+            // Display a summary message if some files were skipped
             displayError(`Se subieron ${filesUploadedCount} de ${totalFiles} archivos. Se saltaron ${filesSkippedCount} archivos (demasiado grandes o directorios).`);
         } else {
-            clearError();
+            clearError(); // Clear any previous error message if all files were uploaded successfully
         }
     }
 
-    // --- Manejadores de Eventos de Socket.IO ---
+    // --- Socket.IO Event Handlers ---
     socket.on('connect', () => {
         console.log('Conectado al servidor Socket.IO');
+        // When connected, the server will automatically emit 'files_list'
     });
 
     socket.on('disconnect', () => {
@@ -221,6 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     socket.on('files_list', (filesArray) => {
+        // Receive the full list of files on connect or update
         currentFiles = {};
         filesArray.forEach(file => {
             currentFiles[file.id] = file;
@@ -230,25 +237,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     socket.on('file_updated', (file) => {
+        // A file has been created or modified
         currentFiles[file.id] = file;
         renderFiles();
         clearError();
     });
 
     socket.on('file_deleted', (fileId) => {
+        // A file has been deleted
         delete currentFiles[fileId];
         renderFiles();
         clearError();
     });
 
     socket.on('error', (message) => {
-        console.error('Error del servidor:', message);
+        console.error('Server error:', message);
         displayError(`Error del servidor: ${message}`);
     });
 
-    // Deshabilitar botón de subida inicialmente si no hay archivo seleccionado
+    // Disable upload button initially if no file is selected
     fileInput.addEventListener('change', () => {
         uploadFileBtn.disabled = fileInput.files.length === 0;
     });
-    uploadFileBtn.disabled = true; // Deshabilitar al inicio
+    uploadFileBtn.disabled = true; // Disable on initial load
 });

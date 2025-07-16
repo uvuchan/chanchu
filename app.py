@@ -6,41 +6,57 @@ from flask_socketio import SocketIO, emit
 import eventlet
 from datetime import datetime
 
-# Configuración de la aplicación Flask
+# Flask application configuration
 app = Flask(__name__, static_folder='static', template_folder='static')
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'una_clave_secreta_de_respaldo_para_desarrollo_local')
+
+# Read SECRET_KEY from environment variables for security.
+# Use a fallback for local development if the environment variable is not set.
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'una_clave_secreta_de_respaldo_para_desarrollo_local_insegura')
+
+# Configure Socket.IO to allow connections from any origin (CORS)
+# In production, you should specify exact domains instead of "*"
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
-# --- Almacenamiento de Archivos (Simulación de DB) ---
+# --- File Storage (Simulated Database) ---
+# We use a simple JSON file to persist data.
+# In a production environment, you would use a real database (SQL, NoSQL)
+# and a dedicated file storage service (like AWS S3, Google Cloud Storage) for large files.
 DATA_FILE = 'exam_files.json'
 
 def load_files():
-    """Carga los archivos desde el archivo JSON."""
+    """Loads files from the JSON file."""
     if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
+        try:
+            with open(DATA_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            print(f"Warning: {DATA_FILE} is empty or corrupted. Starting with an empty database.")
+            return {}
     return {}
 
 def save_files(files_data):
-    """Guarda los archivos en el archivo JSON."""
+    """Saves files to the JSON file."""
     with open(DATA_FILE, 'w', encoding='utf-8') as f:
         json.dump(files_data, f, indent=4)
 
-files_db = load_files()
+files_db = load_files() # Load files when the server starts
 
-# --- Rutas Flask ---
+# --- Flask Routes ---
 @app.route('/')
 def index():
-    """Sirve el archivo HTML principal."""
+    """Serves the main HTML file."""
     return render_template('index.html')
 
-# --- Eventos de Socket.IO ---
+# --- Socket.IO Events ---
 @socketio.on('connect')
 def handle_connect():
-    """Maneja la conexión de un nuevo cliente."""
-    print(f"Cliente conectado: {request.sid}")
+    """Handles a new client connection."""
+    print(f"Client connected: {request.sid}")
+    # Send the current list of files to the newly connected client
+    # Convert timestamps to string if they are not already for JSON serialization
     files_to_send = []
     for file_data in files_db.values():
+        # Ensure timestamp is a string (ISO format) before sending
         if isinstance(file_data.get('timestamp'), datetime):
             file_data['timestamp'] = file_data['timestamp'].isoformat()
         files_to_send.append(file_data)
@@ -48,47 +64,53 @@ def handle_connect():
 
 @socketio.on('upload_file')
 def handle_upload_file(data):
-    """Maneja la subida de un archivo individual o parte de un directorio."""
+    """Handles file upload from the client (individual file or part of a directory)."""
     file_id = str(uuid.uuid4())
     file_name = data.get('fileName')
-    file_content = data.get('fileContent') # Contenido Base64
+    file_content = data.get('fileContent') # Base64 content
     uploaded_by = data.get('uploadedBy')
-    # Nuevo campo para la ruta relativa si es parte de un directorio
-    relative_path = data.get('relativePath', file_name) # Usa file_name si no hay relativePath
+    # New field for the relative path if it's part of a directory upload
+    relative_path = data.get('relativePath', file_name) # Use file_name if no relativePath
 
-    # Validar datos básicos
+    # Basic data validation
     if not all([file_name, file_content, uploaded_by]):
-        print("Datos de archivo incompletos.")
+        print("Incomplete file data received.")
         return
 
-    # Guardar en la base de datos simulada
+    # Save to the simulated database
     files_db[file_id] = {
         'id': file_id,
         'fileName': file_name,
         'fileContent': file_content,
         'uploadedBy': uploaded_by,
-        'timestamp': datetime.now().isoformat(), # Genera el timestamp en el servidor como ISO string
-        'relativePath': relative_path # Guarda la ruta relativa
+        'timestamp': datetime.now().isoformat(), # Generate timestamp on the server as ISO string
+        'relativePath': relative_path # Store the relative path
     }
     save_files(files_db)
 
-    print(f"Archivo subido: {relative_path} por {uploaded_by}")
+    print(f"File uploaded: {relative_path} by {uploaded_by}")
+    # Emit the event to all connected clients to update their file list
     socketio.emit('file_updated', files_db[file_id])
 
 @socketio.on('delete_file')
 def handle_delete_file(file_id):
-    """Maneja la eliminación de un archivo."""
+    """Handles file deletion."""
     if file_id in files_db:
         file_name = files_db[file_id]['fileName']
         del files_db[file_id]
         save_files(files_db)
-        print(f"Archivo eliminado: {file_name} (ID: {file_id})")
+        print(f"File deleted: {file_name} (ID: {file_id})")
+        # Emit the event to all connected clients to update their file list
         socketio.emit('file_deleted', file_id)
     else:
-        print(f"Intento de eliminar archivo no existente: {file_id}")
+        print(f"Attempted to delete non-existent file: {file_id}")
 
-# --- Ejecución de la aplicación ---
+# --- Application Execution ---
 if __name__ == '__main__':
-    print("Iniciando servidor Flask con Socket.IO...")
+    # Use eventlet.wsgi.server to run Flask-SocketIO
+    # This is important for asynchronous mode
+    print("Starting Flask server with Socket.IO...")
+    # For Render, the port is obtained from the PORT environment variable
+    # For local execution, it defaults to 5000
     port = int(os.environ.get('PORT', 5000))
     socketio.run(app, host='0.0.0.0', port=port, debug=True)
