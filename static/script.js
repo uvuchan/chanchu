@@ -45,10 +45,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function displayError(message) {
-        errorTextSpan.textContent = message;
-        showMessage(errorTextSpan, message, true);
-    }
+   function displayError(message) {
+    console.error("Error recibido en frontend:", message); // <-- Añade esta línea
+    errorTextSpan.textContent = message;
+    showMessage(errorTextSpan, message, true);
+}
 
     function clearError() {
         hideMessage(errorTextSpan, true);
