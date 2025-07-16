@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Elementos del DOM ---
     const userIdDisplay = document.getElementById('userIdDisplay');
     const fileInput = document.getElementById('fileInput');
-    const uploadFileBtn = document.getElementById('uploadFileBtn'); // Botón único
+    const uploadFileBtn = document.getElementById('uploadFileBtn');
     const uploadingMessage = document.getElementById('uploadingMessage');
     const filesList = document.getElementById('filesList');
     const noFilesMessage = document.getElementById('noFilesMessage');
@@ -54,9 +54,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function setUploadingState(isUploading) {
         fileInput.disabled = isUploading;
-        uploadFileBtn.disabled = isUploading || !fileInput.files[0]; // Habilita/deshabilita el botón único
+        uploadFileBtn.disabled = isUploading || fileInput.files.length === 0; // Habilita/deshabilita el botón único
         if (isUploading) {
-            showMessage(uploadingMessage, 'Por favor, espere mientras se sube el archivo...');
+            showMessage(uploadingMessage, 'Por favor, espere mientras se suben los archivos...');
         } else {
             hideMessage(uploadingMessage);
         }
@@ -81,14 +81,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 li.className = `flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-white dark:bg-gray-700 rounded-lg shadow-sm
                                 border border-gray-200 dark:border-gray-600 hover:shadow-md transition-shadow duration-200`;
                 
-                // Ya no hay 'fileType' para clasificar con color
                 const uploadedByShort = file.uploadedBy ? file.uploadedBy.substring(0, 8) + '...' : 'Desconocido';
                 const fileDate = file.timestamp ? new Date(file.timestamp).toLocaleString() : 'N/A';
+
+                // Mostrar la ruta relativa si existe, de lo contrario, solo el nombre del archivo
+                const displayName = file.relativePath || file.fileName;
 
                 li.innerHTML = `
                     <div class="flex-grow mb-2 sm:mb-0">
                         <p class="font-medium text-lg text-blue-700 dark:text-blue-300 break-words">
-                            ${file.fileName}
+                            ${displayName}
                         </p>
                         <p class="text-xs text-gray-500 dark:text-gray-400">
                             Subido por: <span class="font-mono">${uploadedByShort}</span>
@@ -121,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (file) {
                         const link = document.createElement('a');
                         link.href = file.fileContent;
-                        link.download = file.fileName;
+                        link.download = file.fileName; // Descarga con el nombre original del archivo
                         document.body.appendChild(link);
                         link.click();
                         document.body.removeChild(link);
@@ -145,43 +147,72 @@ document.addEventListener('DOMContentLoaded', () => {
     uploadFileBtn.addEventListener('click', () => handleFileUpload());
 
     async function handleFileUpload() {
-        const file = fileInput.files[0];
-        if (!file) {
-            displayError("Por favor, selecciona un archivo primero.");
-            return;
-        }
-
-        if (file.size > 500 * 1024) { // Límite de 500KB para Base64
-            displayError("El archivo es demasiado grande. Por favor, sube un archivo de menos de 500KB.");
+        const files = fileInput.files; // Ahora files es una FileList
+        if (files.length === 0) {
+            displayError("Por favor, selecciona al menos un archivo o un directorio.");
             return;
         }
 
         clearError();
         setUploadingState(true);
 
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const fileContent = e.target.result; // Contenido en Base64
-            socket.emit('upload_file', {
-                fileName: file.name,
-                fileContent: fileContent, // Ya no se envía 'fileType'
-                uploadedBy: userId,
-                timestamp: new Date().toISOString() // Envía la fecha como ISO string
+        let filesUploadedCount = 0;
+        let filesSkippedCount = 0;
+        const totalFiles = files.length;
+
+        for (let i = 0; i < totalFiles; i++) {
+            const file = files[i];
+
+            // Ignorar directorios si el navegador los incluye en la FileList
+            if (file.isDirectory) { // file.isDirectory es una propiedad no estándar pero útil
+                filesSkippedCount++;
+                continue;
+            }
+
+            if (file.size > 500 * 1024) { // Límite de 500KB para Base64
+                console.warn(`Archivo ${file.name} es demasiado grande (${(file.size / 1024).toFixed(2)}KB). Saltando.`);
+                filesSkippedCount++;
+                continue;
+            }
+            
+            // Usar una Promise para manejar la lectura asíncrona de cada archivo
+            await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const fileContent = e.target.result; // Contenido en Base64
+                    socket.emit('upload_file', {
+                        fileName: file.name,
+                        fileContent: fileContent,
+                        uploadedBy: userId,
+                        timestamp: new Date().toISOString(),
+                        relativePath: file.webkitRelativePath || file.name // Envía la ruta relativa
+                    });
+                    filesUploadedCount++;
+                    resolve(); // Resuelve la promesa cuando el archivo ha sido emitido
+                };
+                reader.onerror = () => {
+                    console.error(`Error al leer el archivo ${file.name}.`);
+                    filesSkippedCount++;
+                    resolve(); // Resuelve la promesa incluso si hay error para continuar con el siguiente archivo
+                };
+                reader.readAsDataURL(file); // Lee el archivo como Base64
             });
-            fileInput.value = ''; // Limpia el input después de emitir
-            setUploadingState(false);
-        };
-        reader.onerror = () => {
-            displayError("Error al leer el archivo.");
-            setUploadingState(false);
-        };
-        reader.readAsDataURL(file); // Lee el archivo como Base64
+        }
+
+        // Limpia el input después de procesar todos los archivos
+        fileInput.value = '';
+        setUploadingState(false);
+
+        if (filesSkippedCount > 0) {
+            displayError(`Se subieron ${filesUploadedCount} de ${totalFiles} archivos. Se saltaron ${filesSkippedCount} archivos (demasiado grandes o directorios).`);
+        } else {
+            clearError();
+        }
     }
 
     // --- Manejadores de Eventos de Socket.IO ---
     socket.on('connect', () => {
         console.log('Conectado al servidor Socket.IO');
-        // Cuando se conecta, el servidor emitirá 'files_list' automáticamente
     });
 
     socket.on('disconnect', () => {
@@ -190,7 +221,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     socket.on('files_list', (filesArray) => {
-        // Recibe la lista completa de archivos al conectar o actualizar
         currentFiles = {};
         filesArray.forEach(file => {
             currentFiles[file.id] = file;
@@ -200,14 +230,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     socket.on('file_updated', (file) => {
-        // Un archivo ha sido creado o modificado
         currentFiles[file.id] = file;
         renderFiles();
         clearError();
     });
 
     socket.on('file_deleted', (fileId) => {
-        // Un archivo ha sido eliminado
         delete currentFiles[fileId];
         renderFiles();
         clearError();
@@ -220,7 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Deshabilitar botón de subida inicialmente si no hay archivo seleccionado
     fileInput.addEventListener('change', () => {
-        uploadFileBtn.disabled = !fileInput.files[0];
+        uploadFileBtn.disabled = fileInput.files.length === 0;
     });
     uploadFileBtn.disabled = true; // Deshabilitar al inicio
 });
