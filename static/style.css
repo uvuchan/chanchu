@@ -427,6 +427,166 @@
     background: #555;
 }
 
+
+/* ... tus estilos existentes ... */
+
+/* Nuevo: Contenedor para el título de la lista de archivos y el botón de descarga global */
+.files-list-header {
+    display: flex;
+    flex-direction: column; /* Por defecto en columnas para móviles */
+    align-items: center;
+    gap: 1rem; /* Espacio entre elementos */
+    margin-bottom: 1.5rem; /* Espacio debajo del encabezado de la lista */
+}
+@media (min-width: 640px) { /* sm:flex-row para pantallas más grandes */
+    .files-list-header {
+        flex-direction: row;
+        justify-content: space-between; /* Espacia los elementos */
+        align-items: center;
+    }
+}
+
+
+/* Nuevo: Estilos para el botón de Descargar Todos */
+.btn-download-all {
+    background-color: #10b981; /* green-500, un color diferente para distinguirlo */
+    padding: 0.75rem 1.5rem; /* Similar al botón primary */
+    font-size: 0.875rem; /* text-sm */
+    font-weight: 600; /* font-semibold */
+    border-radius: 9999px; /* rounded-full */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
+    transition: all 0.3s ease-in-out;
+    transform: scale(1);
+    white-space: nowrap; /* Evita que el texto se rompa */
+    width: 100%; /* Ocupa todo el ancho en móviles */
+}
+/* Media query para pantallas pequeñas (sm) */
+@media (min-width: 640px) {
+    .btn-download-all {
+        width: auto; /* Ancho automático en pantallas más grandes */
+    }
+}
+.btn-download-all:hover {
+    background-color: #059669; /* green-600 */
+    transform: scale(1.05);
+}
+.btn-download-all:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: #6ee7b7; /* green-300 para deshabilitado */
+}
+@media (prefers-color-scheme: dark) {
+    .btn-download-all {
+        background-color: #047857; /* green-700 en modo oscuro */
+    }
+    .btn-download-all:hover {
+        background-color: #065f46; /* green-800 en modo oscuro */
+    }
+    .btn-download-all:disabled {
+        background-color: #14532d; /* green-900 para deshabilitado en modo oscuro */
+    }
+}
+
+/* Resto de tus estilos... */
+
+.section-files-list {
+    /* No hay estilos específicos de sección aquí, solo para agrupar */
+}
+.files-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem; /* space-y-4 */
+    /* Eliminar el margen inferior si ya lo gestiona files-list-header */
+    margin-top: 1rem; /* Ajustar el margen superior si es necesario */
+}
+
+/* Estilos de la sección de subida (asegurar espacio para el drop area) */
+.section-upload {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background-color: #f9fafb;
+    border-radius: 0.5rem;
+    box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+    display: flex; /* Añadir flexbox para organizar elementos internos */
+    flex-direction: column; /* Apilar elementos verticalmente */
+    gap: 1rem; /* Espacio entre el input/botón y el drop area */
+}
+/* Modo oscuro para la sección de subida */
+@media (prefers-color-scheme: dark) {
+    .section-upload {
+        background-color: #374151;
+    }
+}
+
+
+/* Nuevo: Estilos para el área de Drag and Drop */
+.drop-area {
+    border: 2px dashed #9ca3af; /* gray-400 */
+    border-radius: 0.5rem; /* rounded-lg */
+    padding: 2rem; /* p-8 */
+    text-align: center;
+    color: #6b7280; /* gray-500 */
+    font-size: 1rem;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+    cursor: pointer;
+    margin-top: 1rem; /* Margen para separarlo de los controles de subida */
+}
+/* Modo oscuro para el área de drop */
+@media (prefers-color-scheme: dark) {
+    .drop-area {
+        border-color: #4b5563; /* gray-600 */
+        color: #d1d5db; /* gray-300 */
+        background-color: #4b5563; /* gray-600 */
+    }
+}
+
+/* Estilo cuando un archivo está siendo arrastrado sobre el área */
+.drop-area.drag-over {
+    background-color: #e0f2fe; /* blue-50 */
+    border-color: #3b82f6; /* blue-500 */
+    color: #1d4ed8; /* blue-700 */
+}
+/* Modo oscuro para drag-over */
+@media (prefers-color-scheme: dark) {
+    .drop-area.drag-over {
+        background-color: #1f2937; /* gray-800 */
+        border-color: #60a5fa; /* blue-400 */
+        color: #93c5fd; /* blue-300 */
+    }
+}
+
+/* Estilo cuando el área de drop está deshabilitada */
+.drop-area.disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    background-color: #e5e7eb; /* gray-200 */
+    border-color: #d1d5db; /* gray-300 */
+}
+@media (prefers-color-scheme: dark) {
+    .drop-area.disabled {
+        background-color: #1f2937; /* gray-800 */
+        border-color: #374151; /* gray-700 */
+    }
+}
+
+/* Ajustes adicionales para upload-controls si es necesario */
+.upload-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0; /* Asegurar que no haya margen extra que interfiera */
+}
+@media (min-width: 640px) {
+    .upload-controls {
+        flex-direction: row;
+        gap: 0;
+    }
+    .upload-controls > *:not(:last-child) {
+        margin-right: 1rem;
+    }
+}
+
 /* Estilos para el modo oscuro del scrollbar */
 @media (prefers-color-scheme: dark) {
     ::-webkit-scrollbar-track {

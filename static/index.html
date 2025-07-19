@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Plataforma de Examen Remoto</title>
-    <!-- Google Fonts - Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Tu archivo CSS personalizado -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body class="body-base">
@@ -28,35 +26,39 @@
             <span id="errorText" class="error-text-inline"></span>
         </div>
 
-        <!-- Sección de Subida de Archivos/Directorios -->
         <section class="section-upload">
             <h2 class="section-title">Subir Archivo o Directorio</h2>
             <div class="upload-controls">
                 <input type="file" id="fileInput" class="input-file"
-                       accept="image/*, application/pdf, text/plain, .py, *.*"
-                       webkitdirectory directory>
+                        accept="image/*, application/pdf, text/plain, .py, *.*"
+                        webkitdirectory directory>
                 <button id="uploadFileBtn" class="btn btn-primary">
                     Subir
                 </button>
             </div>
             <p id="uploadingMessage" class="uploading-message hidden">Por favor, espere mientras se suben los archivos...</p>
+
+            <div id="dropArea" class="drop-area">
+                <p>O arrastra y suelta archivos aquí</p>
+            </div>
         </section>
 
-        <!-- Sección de Lista de Archivos -->
         <section class="section-files-list">
-            <h2 class="section-title">Archivos Sincronizados</h2>
+            <div class="files-list-header">
+                <h2 class="section-title">Archivos Sincronizados</h2>
+                <button id="downloadAllFilesBtn" class="btn btn-download-all" disabled>
+                    Descargar Todos los Archivos
+                </button>
+            </div>
             <ul id="filesList" class="files-list">
-                <!-- Los archivos se renderizarán aquí por JavaScript -->
-            </ul>
+                </ul>
             <p id="noFilesMessage" class="no-files-message">
                 No hay archivos subidos aún. ¡Sube un archivo o directorio!
             </p>
         </section>
     </main>
 
-    <!-- Socket.IO Client Library -->
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
-    <!-- Tu script JS -->
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
