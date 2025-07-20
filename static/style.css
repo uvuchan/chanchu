@@ -26,68 +26,7 @@
     }
 }
 
-/* Estilos del encabezado */
-.header-wrapper {
-    width: 100%;
-    max-width: 64rem; /* max-w-4xl */
-    text-align: center;
-    margin-bottom: 2rem; /* mb-8 */
-}
-.header-title {
-    font-size: 2.25rem; /* text-4xl */
-    line-height: 2.5rem;
-    font-weight: 700; /* font-bold */
-    color: #2563eb; /* blue-600 */
-    margin-bottom: 0.5rem; /* mb-2 */
-}
-/* Modo oscuro para el título del encabezado */
-@media (prefers-color-scheme: dark) {
-    .header-title {
-        color: #60a5fa; /* blue-400 */
-    }
-}
-/* Media query para pantallas pequeñas (sm) */
-@media (min-width: 640px) {
-    .header-title {
-        font-size: 3rem; /* sm:text-5xl */
-        line-height: 1;
-    }
-}
-.header-subtitle {
-    font-size: 1.125rem; /* text-lg */
-    line-height: 1.75rem;
-    color: #374151; /* gray-700 */
-}
-/* Modo oscuro para el subtítulo del encabezado */
-@media (prefers-color-scheme: dark) {
-    .header-subtitle {
-        color: #d1d5db; /* gray-300 */
-    }
-}
-.user-id-text {
-    font-size: 0.875rem; /* text-sm */
-    line-height: 1.25rem;
-    color: #6b7280; /* gray-500 */
-    margin-top: 0.5rem; /* mt-2 */
-}
-/* Modo oscuro para el texto del ID de usuario */
-@media (prefers-color-scheme: dark) {
-    .user-id-text {
-        color: #9ca3af; /* gray-400 */
-    }
-}
-.user-id-display {
-    font-family: monospace;
-    background-color: #e5e7eb; /* gray-200 */
-    padding: 0.25rem 0.5rem; /* px-2 py-1 */
-    border-radius: 0.375rem; /* rounded-md */
-}
-/* Modo oscuro para el display del ID de usuario */
-@media (prefers-color-scheme: dark) {
-    .user-id-display {
-        background-color: #1f2937; /* gray-800 */
-    }
-}
+/* Se eliminaron todos los estilos relacionados con el header-wrapper, header-title, header-subtitle, user-id-text, user-id-display */
 
 /* Estilos del contenedor principal */
 .main-wrapper {
@@ -97,6 +36,7 @@
     border-radius: 0.75rem; /* rounded-xl */
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
     padding: 1.5rem; /* p-6 */
+    margin-top: 0; /* Asegurar que no haya margen superior por el header eliminado */
 }
 /* Modo oscuro para el contenedor principal */
 @media (prefers-color-scheme: dark) {
@@ -145,6 +85,9 @@
     background-color: #f9fafb; /* gray-50 */
     border-radius: 0.5rem; /* rounded-lg */
     box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06); /* shadow-inner */
+    display: flex; /* Añadir flexbox para organizar elementos internos */
+    flex-direction: column; /* Apilar elementos verticalmente */
+    gap: 1rem; /* Espacio entre el input/botón y el drop area */
 }
 /* Modo oscuro para la sección de subida */
 @media (prefers-color-scheme: dark) {
@@ -172,6 +115,7 @@
     flex-direction: column;
     align-items: center;
     gap: 1rem; /* space-y-4 */
+    margin-bottom: 0; /* Asegurar que no haya margen extra que interfiera */
 }
 /* Media query para pantallas pequeñas (sm) */
 @media (min-width: 640px) {
@@ -275,14 +219,68 @@
     }
 }
 
-/* Lista de archivos */
-.section-files-list {
-    /* No hay estilos específicos de sección aquí, solo para agrupar */
+/* Nuevo: Contenedor para el título de la lista de archivos y el botón de descarga global */
+.files-list-header {
+    display: flex;
+    flex-direction: column; /* Por defecto en columnas para móviles */
+    align-items: center;
+    gap: 1rem; /* Espacio entre elementos */
+    margin-bottom: 1.5rem; /* Espacio debajo del encabezado de la lista */
 }
+@media (min-width: 640px) { /* sm:flex-row para pantallas más grandes */
+    .files-list-header {
+        flex-direction: row;
+        justify-content: space-between; /* Espacia los elementos */
+        align-items: center;
+    }
+}
+
+
+/* Nuevo: Estilos para el botón de Descargar Todos */
+.btn-download-all {
+    background-color: #10b981; /* green-500, un color diferente para distinguirlo */
+    padding: 0.75rem 1.5rem; /* Similar al botón primary */
+    font-size: 0.875rem; /* text-sm */
+    font-weight: 600; /* font-semibold */
+    border-radius: 9999px; /* rounded-full */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
+    transition: all 0.3s ease-in-out;
+    transform: scale(1);
+    white-space: nowrap; /* Evita que el texto se rompa */
+    width: 100%; /* Ocupa todo el ancho en móviles */
+}
+/* Media query para pantallas pequeñas (sm) */
+@media (min-width: 640px) {
+    .btn-download-all {
+        width: auto; /* Ancho automático en pantallas más grandes */
+    }
+}
+.btn-download-all:hover {
+    background-color: #059669; /* green-600 */
+    transform: scale(1.05);
+}
+.btn-download-all:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: #6ee7b7; /* green-300 para deshabilitado */
+}
+@media (prefers-color-scheme: dark) {
+    .btn-download-all {
+        background-color: #047857; /* green-700 en modo oscuro */
+    }
+    .btn-download-all:hover {
+        background-color: #065f46; /* green-800 en modo oscuro */
+    }
+    .btn-download-all:disabled {
+        background-color: #14532d; /* green-900 para deshabilitado en modo oscuro */
+    }
+}
+
 .files-list {
     display: flex;
     flex-direction: column;
     gap: 1rem; /* space-y-4 */
+    margin-top: 1rem; /* Ajustar el margen superior si es necesario */
 }
 
 /* Elemento individual de la lista de archivos */
@@ -427,97 +425,18 @@
     background: #555;
 }
 
-
-/* ... tus estilos existentes ... */
-
-/* Nuevo: Contenedor para el título de la lista de archivos y el botón de descarga global */
-.files-list-header {
-    display: flex;
-    flex-direction: column; /* Por defecto en columnas para móviles */
-    align-items: center;
-    gap: 1rem; /* Espacio entre elementos */
-    margin-bottom: 1.5rem; /* Espacio debajo del encabezado de la lista */
-}
-@media (min-width: 640px) { /* sm:flex-row para pantallas más grandes */
-    .files-list-header {
-        flex-direction: row;
-        justify-content: space-between; /* Espacia los elementos */
-        align-items: center;
-    }
-}
-
-
-/* Nuevo: Estilos para el botón de Descargar Todos */
-.btn-download-all {
-    background-color: #10b981; /* green-500, un color diferente para distinguirlo */
-    padding: 0.75rem 1.5rem; /* Similar al botón primary */
-    font-size: 0.875rem; /* text-sm */
-    font-weight: 600; /* font-semibold */
-    border-radius: 9999px; /* rounded-full */
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
-    transition: all 0.3s ease-in-out;
-    transform: scale(1);
-    white-space: nowrap; /* Evita que el texto se rompa */
-    width: 100%; /* Ocupa todo el ancho en móviles */
-}
-/* Media query para pantallas pequeñas (sm) */
-@media (min-width: 640px) {
-    .btn-download-all {
-        width: auto; /* Ancho automático en pantallas más grandes */
-    }
-}
-.btn-download-all:hover {
-    background-color: #059669; /* green-600 */
-    transform: scale(1.05);
-}
-.btn-download-all:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    background-color: #6ee7b7; /* green-300 para deshabilitado */
-}
+/* Estilos para el modo oscuro del scrollbar */
 @media (prefers-color-scheme: dark) {
-    .btn-download-all {
-        background-color: #047857; /* green-700 en modo oscuro */
+    ::-webkit-scrollbar-track {
+        background: #333;
     }
-    .btn-download-all:hover {
-        background-color: #065f46; /* green-800 en modo oscuro */
+    ::-webkit-scrollbar-thumb {
+        background: #555;
     }
-    .btn-download-all:disabled {
-        background-color: #14532d; /* green-900 para deshabilitado en modo oscuro */
-    }
-}
-
-/* Resto de tus estilos... */
-
-.section-files-list {
-    /* No hay estilos específicos de sección aquí, solo para agrupar */
-}
-.files-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem; /* space-y-4 */
-    /* Eliminar el margen inferior si ya lo gestiona files-list-header */
-    margin-top: 1rem; /* Ajustar el margen superior si es necesario */
-}
-
-/* Estilos de la sección de subida (asegurar espacio para el drop area) */
-.section-upload {
-    margin-bottom: 2rem;
-    padding: 1.5rem;
-    background-color: #f9fafb;
-    border-radius: 0.5rem;
-    box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
-    display: flex; /* Añadir flexbox para organizar elementos internos */
-    flex-direction: column; /* Apilar elementos verticalmente */
-    gap: 1rem; /* Espacio entre el input/botón y el drop area */
-}
-/* Modo oscuro para la sección de subida */
-@media (prefers-color-scheme: dark) {
-    .section-upload {
-        background-color: #374151;
+    ::-webkit-scrollbar-thumb:hover {
+        background: #777;
     }
 }
-
 
 /* Nuevo: Estilos para el área de Drag and Drop */
 .drop-area {
@@ -566,36 +485,5 @@
     .drop-area.disabled {
         background-color: #1f2937; /* gray-800 */
         border-color: #374151; /* gray-700 */
-    }
-}
-
-/* Ajustes adicionales para upload-controls si es necesario */
-.upload-controls {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 0; /* Asegurar que no haya margen extra que interfiera */
-}
-@media (min-width: 640px) {
-    .upload-controls {
-        flex-direction: row;
-        gap: 0;
-    }
-    .upload-controls > *:not(:last-child) {
-        margin-right: 1rem;
-    }
-}
-
-/* Estilos para el modo oscuro del scrollbar */
-@media (prefers-color-scheme: dark) {
-    ::-webkit-scrollbar-track {
-        background: #333;
-    }
-    ::-webkit-scrollbar-thumb {
-        background: #555;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-        background: #777;
     }
 }

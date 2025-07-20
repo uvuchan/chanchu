@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Elements ---
-    const userIdDisplay = document.getElementById('userIdDisplay');
+    // const userIdDisplay = document.getElementById('userIdDisplay'); // ELIMINADO
     const fileInput = document.getElementById('fileInput');
     const uploadFileBtn = document.getElementById('uploadFileBtn');
     const uploadingMessage = document.getElementById('uploadingMessage');
@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const errorMessageDiv = document.getElementById('errorMessage');
     const errorTextSpan = document.getElementById('errorText');
     const downloadAllFilesBtn = document.getElementById('downloadAllFilesBtn');
-    const dropArea = document.getElementById('dropArea'); // Nuevo: Área de drag and drop
+    const dropArea = document.getElementById('dropArea');
 
     // Obtener o generar un ID de usuario único para esta sesión
     let userId = localStorage.getItem('exam_app_userId');
@@ -17,14 +17,15 @@ document.addEventListener('DOMContentLoaded', () => {
         userId = crypto.randomUUID(); // Genera un ID de usuario único
         localStorage.setItem('exam_app_userId', userId);
     }
-    userIdDisplay.textContent = userId.substring(0, 8) + '...'; // Mostrar una versión corta del ID
+    // No hay necesidad de actualizar userIdDisplay ya que fue eliminado del DOM.
+    // userIdDisplay.textContent = userId.substring(0, 8) + '...';
 
     // --- Configuración de Socket.IO ---
     const socket = io();
 
-    let currentFiles = {}; // Objeto para almacenar archivos por ID para fácil actualización
+    let currentFiles = {};
 
-    // --- Funciones de Utilidad (sin cambios) ---
+    // --- Funciones de Utilidad (sin cambios significativos) ---
     function showMessage(element, message, isError = false) {
         element.textContent = message;
         if (isError) {
@@ -59,7 +60,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function setUploadingState(isUploading) {
         fileInput.disabled = isUploading;
         uploadFileBtn.disabled = isUploading || fileInput.files.length === 0;
-        // Deshabilitar el área de drop también durante la subida
         if (isUploading) {
             dropArea.classList.add('disabled');
             dropArea.removeEventListener('dragover', handleDragOver);
@@ -67,7 +67,6 @@ document.addEventListener('DOMContentLoaded', () => {
             dropArea.removeEventListener('drop', handleDrop);
         } else {
             dropArea.classList.remove('disabled');
-            // Asegurarse de que los listeners estén adjuntos si no está subiendo
             addDropAreaListeners();
         }
         if (isUploading) {
@@ -96,7 +95,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const li = document.createElement('li');
                 li.className = `file-item`;
                 
-                const uploadedByShort = file.uploadedBy ? file.uploadedBy.substring(0, 8) + '...' : 'Desconocido';
+                // Asegurarse de que el userId se muestre completo si no hay dónde acortarlo
+                const uploadedByFull = file.uploadedBy || 'Desconocido';
+
                 const fileDate = file.timestamp ? new Date(file.timestamp).toLocaleString() : 'N/A';
 
                 const displayName = file.relativePath || file.fileName;
@@ -107,7 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             ${displayName}
                         </p>
                         <p class="file-meta">
-                            Subido por: <span class="file-user-id">${uploadedByShort}</span>
+                            Subido por: <span class="file-user-id">${uploadedByFull}</span>
                         </p>
                         <p class="file-meta">
                             Fecha: ${fileDate}
@@ -153,7 +154,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Función Unificada para Manejar la Subida de Archivos ---
-    // Esta función ahora será llamada tanto por el input de archivo como por drag-and-drop
     async function processFilesForUpload(filesToProcess) {
         if (filesToProcess.length === 0) {
             displayError("No se seleccionaron archivos para subir.");
@@ -170,14 +170,12 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 0; i < totalFiles; i++) {
             const file = filesToProcess[i];
 
-            // Omitir directorios o archivos especiales si el navegador los incluye
-            if (file.isDirectory || file.type === "") { // file.type === "" a menudo indica un directorio
+            if (file.isDirectory || file.type === "") {
                 filesSkippedCount++;
                 continue;
             }
 
-            // --- Límite de tamaño de archivo (20 MB) ---
-            if (file.size > 20 * 1024 * 1024) { // 20 MB
+            if (file.size > 20 * 1024 * 1024) {
                 console.warn(`Archivo ${file.name} es demasiado grande (${(file.size / (1024 * 1024)).toFixed(2)}MB). Saltando.`);
                 filesSkippedCount++;
                 continue;
@@ -206,8 +204,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        setUploadingState(false); // Restablecer estado de subida
-        fileInput.value = ''; // Limpiar el input de archivo después de la subida
+        setUploadingState(false);
+        fileInput.value = '';
 
         if (filesSkippedCount > 0) {
             displayError(`Se subieron ${filesUploadedCount} de ${totalFiles} archivos. Se saltaron ${filesSkippedCount} archivos (demasiado grandes o directorios/errores).`);
@@ -218,7 +216,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Event Listener para el botón único de Subida ---
     uploadFileBtn.addEventListener('click', () => {
-        // Llama a la función unificada con los archivos del input
         processFilesForUpload(fileInput.files);
     });
 
@@ -240,40 +237,37 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // --- Nuevos: Manejadores de Eventos de Drag and Drop ---
+    // --- Manejadores de Eventos de Drag and Drop ---
     function handleDragOver(e) {
-        e.preventDefault(); // Evita el comportamiento predeterminado (abrir archivo en el navegador)
+        e.preventDefault();
         e.stopPropagation();
-        dropArea.classList.add('drag-over'); // Añade una clase para indicar visualmente
+        dropArea.classList.add('drag-over');
     }
 
     function handleDragLeave(e) {
         e.preventDefault();
         e.stopPropagation();
-        dropArea.classList.remove('drag-over'); // Remueve la clase visual
+        dropArea.classList.remove('drag-over');
     }
 
     async function handleDrop(e) {
-        e.preventDefault(); // Evita el comportamiento predeterminado
+        e.preventDefault();
         e.stopPropagation();
-        dropArea.classList.remove('drag-over'); // Remueve la clase visual
+        dropArea.classList.remove('drag-over');
 
         const files = [];
-        // DataTransferItemList para manejar archivos y directorios arrastrados
-        // (Esto es crucial para soportar arrastrar directorios)
         const items = e.dataTransfer.items;
 
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
             if (item.kind === 'file') {
-                const entry = item.webkitGetAsEntry(); // Para obtener la estructura de directorios
+                const entry = item.webkitGetAsEntry();
                 if (entry) {
-                    await traverseFileTree(entry, files); // Función para recorrer directorios
+                    await traverseFileTree(entry, files);
                 }
             }
         }
         
-        // Llama a la función unificada con los archivos obtenidos del drag-and-drop
         processFilesForUpload(files);
     }
 
@@ -296,7 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     resolve();
                 });
             } else {
-                resolve(); // No es ni archivo ni directorio, simplemente resuelve
+                resolve();
             }
         });
     }
@@ -307,7 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dropArea.addEventListener('dragleave', handleDragLeave);
         dropArea.addEventListener('drop', handleDrop);
     }
-    addDropAreaListeners(); // Adjuntar al cargar la página
+    addDropAreaListeners();
 
     // --- Manejadores de Eventos de Socket.IO (sin cambios) ---
     socket.on('connect', () => {
