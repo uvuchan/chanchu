@@ -20,7 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Configuración de Socket.IO ---
     const socket = io();
 
-    // currentFiles ahora solo almacenará metadatos, no el contenido del archivo Base64
     let currentFiles = {};
 
     // --- Funciones de Utilidad ---
@@ -94,7 +93,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 li.className = `file-item`;
                 
                 const uploadedByFull = file.uploadedBy || 'Desconocido';
+
                 const fileDate = file.timestamp ? new Date(file.timestamp).toLocaleString() : 'N/A';
+
                 const displayName = file.relativePath || file.fileName;
 
                 li.innerHTML = `
@@ -121,12 +122,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 filesList.appendChild(li);
             });
 
-            // --- Manejo de descarga actualizado ---
             filesList.querySelectorAll('button[data-action="download"]').forEach(button => {
                 button.addEventListener('click', (e) => {
                     const fileId = e.target.dataset.id;
-                    // Abrir la URL de descarga directa, ya no necesitamos el contenido Base64 en el frontend
-                    window.open(`/download/${fileId}`, '_blank');
+                    const file = currentFiles[fileId];
+                    if (file) {
+                        const link = document.createElement('a');
+                        link.href = file.fileContent;
+                        link.download = file.fileName;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    }
                 });
             });
 
@@ -142,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Función Unificada para Manejar la Subida de Archivos (AHORA USA FETCH) ---
+    // --- Función Unificada para Manejar la Subida de Archivos ---
     async function processFilesForUpload(filesToProcess) {
         if (filesToProcess.length === 0) {
             displayError("No se seleccionaron archivos para subir.");
@@ -156,64 +163,53 @@ document.addEventListener('DOMContentLoaded', () => {
         let filesSkippedCount = 0;
         const totalFiles = filesToProcess.length;
 
-        const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB (Validación frontend, sigue siendo útil)
+        // --- Asegúrate de que esta constante sea 50 MB ---
+        const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+        // --------------------------------------------------
 
         for (let i = 0; i < totalFiles; i++) {
             const file = filesToProcess[i];
 
-            console.log(`Procesando archivo: ${file.name}, Tipo: ${file.type}, Tamaño: ${file.size} bytes`);
-            console.log(`Es directorio: ${file.isDirectory}, webkitRelativePath: ${file.webkitRelativePath}`);
-
             if (file.isDirectory || file.type === "") {
-                console.warn(`Archivo ${file.name} (tipo: ${file.type}) detectado como directorio o tipo desconocido. Saltando.`);
                 filesSkippedCount++;
                 continue;
             }
 
-            if (file.size > MAX_FILE_SIZE) {
+            // --- Límite de tamaño de archivo ---
+            if (file.size > MAX_FILE_SIZE) { // Usa la constante MAX_FILE_SIZE
                 console.warn(`Archivo ${file.name} es demasiado grande (${(file.size / (1024 * 1024)).toFixed(2)}MB). Saltando.`);
                 filesSkippedCount++;
                 continue;
             }
-
-            // --- NUEVO: Usar FormData y fetch para enviar el archivo ---
-            const formData = new FormData();
-            formData.append('file', file); // El archivo en sí
-            formData.append('uploadedBy', userId); // Datos adicionales
-            // Si el archivo viene de una carga de directorio, incluye la ruta relativa
-            if (file.webkitRelativePath) {
-                formData.append('relativePath', file.webkitRelativePath);
-            } else {
-                formData.append('relativePath', file.name); // Si no hay path relativo, usa el nombre
-            }
-
-            try {
-                const response = await fetch('/upload', {
-                    method: 'POST',
-                    body: formData // fetch con FormData no necesita 'Content-Type'
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log(`Archivo subido exitosamente: ${data.fileName}`);
+            
+            await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const fileContent = e.target.result;
+                    socket.emit('upload_file', {
+                        fileName: file.name,
+                        fileContent: fileContent,
+                        uploadedBy: userId,
+                        timestamp: new Date().toISOString(),
+                        relativePath: file.webkitRelativePath || file.name
+                    });
                     filesUploadedCount++;
-                } else {
-                    const errorData = await response.json();
-                    console.error(`Error al subir ${file.name}: ${errorData.error || response.statusText}`);
+                    resolve();
+                };
+                reader.onerror = () => {
+                    console.error(`Error al leer el archivo ${file.name}.`);
                     filesSkippedCount++;
-                }
-            } catch (error) {
-                console.error(`Error de red o desconocido al subir ${file.name}:`, error);
-                filesSkippedCount++;
-            }
-            // -------------------------------------------------------------
+                    resolve();
+                };
+                reader.readAsDataURL(file);
+            });
         }
 
         setUploadingState(false);
-        fileInput.value = ''; // Limpiar el input de archivos
+        fileInput.value = '';
 
         if (filesSkippedCount > 0) {
-            displayError(`Se subieron ${filesUploadedCount} de ${totalFiles} archivos. Se saltaron ${filesSkippedCount} archivos (demasiado grandes o errores de subida).`);
+            displayError(`Se subieron ${filesUploadedCount} de ${totalFiles} archivos. Se saltaron ${filesSkippedCount} archivos (demasiado grandes o directorios/errores).`);
         } else {
             clearError();
         }
@@ -233,8 +229,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         clearError();
         Object.values(currentFiles).forEach(file => {
-            // Abrir cada archivo en una nueva pestaña para su descarga
-            window.open(`/download/${file.id}`, '_blank');
+            const link = document.createElement('a');
+            link.href = file.fileContent;
+            link.download = file.relativePath || file.fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         });
     });
 
@@ -323,8 +323,8 @@ document.addEventListener('DOMContentLoaded', () => {
         clearError();
     });
 
-    socket.on('file_updated', (fileMetadata) => { // Ahora solo recibimos metadatos
-        currentFiles[fileMetadata.id] = fileMetadata;
+    socket.on('file_updated', (file) => {
+        currentFiles[file.id] = file;
         renderFiles();
         clearError();
     });
