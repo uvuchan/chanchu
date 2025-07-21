@@ -220,7 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
         processFilesForUpload(fileInput.files);
     });
 
-    // --- Event Listener para el botón "Descargar Todos" ---
+    // --- Event Listener para el botón "Descargar Todos" (MODIFICADO) ---
     downloadAllFilesBtn.addEventListener('click', () => {
         if (Object.keys(currentFiles).length === 0) {
             displayError("No hay archivos para descargar.");
@@ -228,14 +228,38 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         clearError();
-        Object.values(currentFiles).forEach(file => {
-            const link = document.createElement('a');
-            link.href = file.fileContent;
-            link.download = file.relativePath || file.fileName;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        });
+        // NOTA: Los navegadores modernos pueden bloquear múltiples descargas automáticas.
+        // Esta aproximación intenta sortearlo con un retraso, pero la mejor solución es
+        // comprimir los archivos en un ZIP en el servidor.
+
+        const filesToDownload = Object.values(currentFiles);
+        let downloadIndex = 0;
+
+        function initiateDownload() {
+            if (downloadIndex < filesToDownload.length) {
+                const file = filesToDownload[downloadIndex];
+                const link = document.createElement('a');
+                link.href = file.fileContent;
+                link.download = file.fileName;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                console.log(`Intentando descargar: ${file.fileName}`);
+
+                downloadIndex++;
+                // Pequeño retraso para evitar que el navegador lo considere spam
+                setTimeout(initiateDownload, 500); // Descarga el siguiente archivo después de 500ms
+            } else {
+                console.log('Todos los intentos de descarga iniciados.');
+            }
+        }
+
+        initiateDownload(); // Inicia el proceso de descarga
+
+        // Opcionalmente, puedes pedirle al usuario que confirme si desea múltiples descargas
+        // if (confirm('Estás a punto de descargar múltiples archivos. ¿Deseas continuar?')) {
+        //     initiateDownload();
+        // }
     });
 
     // --- Manejadores de Eventos de Drag and Drop ---
