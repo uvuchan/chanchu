@@ -48,8 +48,9 @@ files_db = load_files() # Load files when the server starts
 # --- Flask Routes ---
 @app.route('/')
 def index():
-    """Serves the main HTML file."""
-    return render_template('index.html')
+    # Pasa un timestamp a la plantilla para forzar la recarga de JS
+    timestamp_version = datetime.now().strftime("%Y%m%d%H%M%S")
+    return render_template('index.html', timestamp_version=timestamp_version)
 
 # --- Socket.IO Events ---
 @socketio.on('connect')
