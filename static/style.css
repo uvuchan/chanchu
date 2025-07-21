@@ -138,6 +138,33 @@
     }
 }
 
+#downloadAllBtn {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#downloadAllBtn:hover {
+    background-color: #45a049;
+}
+
+#fileList {
+    list-style: none;
+    padding: 0;
+}
+
+#fileList li {
+    background-color: white;
+    margin-bottom: 8px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
 /* Estilos de sección */
 .section-upload {
     margin-bottom: 2rem; /* mb-8 */
@@ -275,10 +302,6 @@
     }
 }
 
-/* Lista de archivos */
-.section-files-list {
-    /* No hay estilos específicos de sección aquí, solo para agrupar */
-}
 .files-list {
     display: flex;
     flex-direction: column;

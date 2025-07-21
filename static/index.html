@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Plataforma de Examen Remoto</title>
     <!-- Google Fonts - Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <!-- Tu archivo CSS personalizado -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 </head>
 <body class="body-base">
     <header class="header-wrapper">
@@ -32,15 +32,24 @@
         <section class="section-upload">
             <h2 class="section-title">Subir Archivo o Directorio</h2>
             <div class="upload-controls">
-                <input type="file" id="fileInput" class="input-file"
-                       accept="image/*, application/pdf, text/plain, .py, *.*"
-                       webkitdirectory directory>
+                <input
+                    type="file"
+                    id="fileInput"
+                    class="input-file"
+                    accept="image/*, application/pdf, text/plain, .py, *.*"
+                    webkitdirectory
+                    directory
+                />
                 <button id="uploadFileBtn" class="btn btn-primary">
                     Subir
                 </button>
             </div>
             <p id="uploadingMessage" class="uploading-message hidden">Por favor, espere mientras se suben los archivos...</p>
         </section>
+
+        <div class="toolbar">
+            <button id="downloadAllBtn" class="btn btn-secondary">📥 Descargar Todos</button>
+        </div>
 
         <!-- Sección de Lista de Archivos -->
         <section class="section-files-list">
