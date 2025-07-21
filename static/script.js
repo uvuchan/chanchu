@@ -163,8 +163,9 @@ document.addEventListener('DOMContentLoaded', () => {
         let filesSkippedCount = 0;
         const totalFiles = filesToProcess.length;
 
-        // Nuevo: Define el tamaño máximo de archivo en bytes (50 MB)
+        // --- Asegúrate de que esta constante sea 50 MB ---
         const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+        // --------------------------------------------------
 
         for (let i = 0; i < totalFiles; i++) {
             const file = filesToProcess[i];
