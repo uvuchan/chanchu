@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const errorMessageDiv = document.getElementById('errorMessage');
     const errorTextSpan = document.getElementById('errorText');
     const dropZone = document.getElementById('dropZone');
+    const downloadAllBtn = document.getElementById('downloadAllBtn'); // Aquí adentro
 
     // Obtener o generar un ID de usuario único para esta sesión
     let userId = localStorage.getItem('exam_app_userId');
@@ -257,24 +258,22 @@ document.addEventListener('DOMContentLoaded', () => {
         uploadFileBtn.disabled = fileInput.files.length === 0;
     });
     uploadFileBtn.disabled = true;
-});
 
-// Al final del DOMContentLoaded
-const downloadAllBtn = document.getElementById('downloadAllBtn');
+    // --- Listener para el botón Descargar Todos ---
+    downloadAllBtn.addEventListener('click', () => {
+        const files = Object.values(currentFiles);
+        if (files.length === 0) {
+            alert("No hay archivos para descargar.");
+            return;
+        }
 
-downloadAllBtn.addEventListener('click', () => {
-    const files = Object.values(currentFiles);
-    if (files.length === 0) {
-        alert("No hay archivos para descargar.");
-        return;
-    }
-
-    files.forEach(file => {
-        const link = document.createElement('a');
-        link.href = file.fileContent;
-        link.download = file.fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        files.forEach(file => {
+            const link = document.createElement('a');
+            link.href = file.fileContent;
+            link.download = file.fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
     });
 });
