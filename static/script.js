@@ -10,19 +10,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadAllFilesBtn = document.getElementById('downloadAllFilesBtn');
     const dropArea = document.getElementById('dropArea');
 
-    // Obtener o generar un ID de usuario único para esta sesión
+    // Get or generate a unique user ID for this session
     let userId = localStorage.getItem('exam_app_userId');
     if (!userId) {
-        userId = crypto.randomUUID(); // Genera un ID de usuario único
+        userId = crypto.randomUUID(); // Generates a unique user ID
         localStorage.setItem('exam_app_userId', userId);
     }
 
-    // --- Configuración de Socket.IO ---
+    // --- Socket.IO Configuration ---
     const socket = io();
 
-    let currentFiles = {};
+    let currentFiles = {}; // Stores file metadata received from the server
 
-    // --- Funciones de Utilidad ---
+    // --- Utility Functions ---
     function showMessage(element, message, isError = false) {
         element.textContent = message;
         if (isError) {
@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function displayError(message) {
-        console.error("Error recibido en frontend:", message);
+        console.error("Error received on frontend:", message);
         errorTextSpan.textContent = message;
         showMessage(errorTextSpan, message, true);
     }
@@ -59,11 +59,13 @@ document.addEventListener('DOMContentLoaded', () => {
         uploadFileBtn.disabled = isUploading || fileInput.files.length === 0;
         if (isUploading) {
             dropArea.classList.add('disabled');
+            // Remove listeners when disabled to prevent new drag/drops during upload
             dropArea.removeEventListener('dragover', handleDragOver);
             dropArea.removeEventListener('dragleave', handleDragLeave);
             dropArea.removeEventListener('drop', handleDrop);
         } else {
             dropArea.classList.remove('disabled');
+            // Re-add listeners when not uploading
             addDropAreaListeners();
         }
         if (isUploading) {
@@ -80,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return dateB.getTime() - dateA.getTime();
         });
 
-        filesList.innerHTML = '';
+        filesList.innerHTML = ''; // Clear existing list
 
         if (sortedFiles.length === 0) {
             noFilesMessage.classList.remove('hidden');
@@ -93,10 +95,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 li.className = `file-item`;
                 
                 const uploadedByFull = file.uploadedBy || 'Desconocido';
-
                 const fileDate = file.timestamp ? new Date(file.timestamp).toLocaleString() : 'N/A';
-
-                const displayName = file.relativePath || file.fileName;
+                const displayName = file.relativePath || file.fileName; // Use relativePath for display
 
                 li.innerHTML = `
                     <div class="file-info">
@@ -122,21 +122,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 filesList.appendChild(li);
             });
 
+            // --- Download button event listeners (now points to server download endpoint) ---
             filesList.querySelectorAll('button[data-action="download"]').forEach(button => {
                 button.addEventListener('click', (e) => {
                     const fileId = e.target.dataset.id;
-                    const file = currentFiles[fileId];
-                    if (file) {
-                        const link = document.createElement('a');
-                        link.href = file.fileContent;
-                        link.download = file.fileName;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                    }
+                    // Open the direct download URL for the file on the server
+                    window.open(`/download/${fileId}`, '_blank');
                 });
             });
 
+            // --- Delete button event listeners ---
             filesList.querySelectorAll('button[data-action="delete"]').forEach(button => {
                 button.addEventListener('click', (e) => {
                     const fileId = e.target.dataset.id;
@@ -149,7 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Función Unificada para Manejar la Subida de Archivos ---
+    // --- Unified Function to Handle File Uploads (NOW USES FETCH/HTTP POST) ---
     async function processFilesForUpload(filesToProcess) {
         if (filesToProcess.length === 0) {
             displayError("No se seleccionaron archivos para subir.");
@@ -163,64 +158,82 @@ document.addEventListener('DOMContentLoaded', () => {
         let filesSkippedCount = 0;
         const totalFiles = filesToProcess.length;
 
-        // --- Asegúrate de que esta constante sea 50 MB ---
-        const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
-        // --------------------------------------------------
+        const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB (Frontend validation)
 
         for (let i = 0; i < totalFiles; i++) {
             const file = filesToProcess[i];
 
+            console.log(`Procesando archivo: ${file.name}, Tipo: ${file.type}, Tamaño: ${file.size} bytes`);
+            // file.isDirectory is only reliably set when using webkitGetAsEntry for folders
+            // file.type === "" is a common indicator for folders in some browsers' FileList
+            console.log(`Es directorio: ${file.isDirectory}, webkitRelativePath: ${file.webkitRelativePath}`);
+
+            // Check if it's a directory (often file.size is 0 and file.type is empty for directories)
+            // or if it's explicitly marked as a directory by webkitRelativePath processing
             if (file.isDirectory || file.type === "") {
+                console.warn(`Archivo ${file.name} (tipo: ${file.type}) detectado como directorio o tipo desconocido. Saltando.`);
                 filesSkippedCount++;
                 continue;
             }
 
-            // --- Límite de tamaño de archivo ---
-            if (file.size > MAX_FILE_SIZE) { // Usa la constante MAX_FILE_SIZE
+            // --- File size limit ---
+            if (file.size > MAX_FILE_SIZE) {
                 console.warn(`Archivo ${file.name} es demasiado grande (${(file.size / (1024 * 1024)).toFixed(2)}MB). Saltando.`);
                 filesSkippedCount++;
                 continue;
             }
-            
-            await new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const fileContent = e.target.result;
-                    socket.emit('upload_file', {
-                        fileName: file.name,
-                        fileContent: fileContent,
-                        uploadedBy: userId,
-                        timestamp: new Date().toISOString(),
-                        relativePath: file.webkitRelativePath || file.name
-                    });
+
+            // --- NEW: Use FormData and fetch to send the file via HTTP POST ---
+            const formData = new FormData();
+            formData.append('file', file); // Append the actual File object
+            formData.append('uploadedBy', userId);
+            // Include relativePath if available (for nested folders)
+            if (file.webkitRelativePath) {
+                formData.append('relativePath', file.webkitRelativePath);
+            } else {
+                formData.append('relativePath', file.name); // Fallback for single file uploads or browsers without webkitRelativePath
+            }
+
+            try {
+                // Send the file to the /upload endpoint
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData // FormData handles setting Content-Type: multipart/form-data
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log(`Archivo subido exitosamente: ${data.fileName}`);
                     filesUploadedCount++;
-                    resolve();
-                };
-                reader.onerror = () => {
-                    console.error(`Error al leer el archivo ${file.name}.`);
+                    // Note: file_updated will come via Socket.IO after server saves.
+                    // No need to manually add to currentFiles here.
+                } else {
+                    const errorData = await response.json();
+                    console.error(`Error al subir ${file.name}: ${errorData.error || response.statusText}`);
                     filesSkippedCount++;
-                    resolve();
-                };
-                reader.readAsDataURL(file);
-            });
+                }
+            } catch (error) {
+                console.error(`Error de red o desconocido al subir ${file.name}:`, error);
+                filesSkippedCount++;
+            }
         }
 
         setUploadingState(false);
-        fileInput.value = '';
+        fileInput.value = ''; // Clear file input after processing
 
         if (filesSkippedCount > 0) {
-            displayError(`Se subieron ${filesUploadedCount} de ${totalFiles} archivos. Se saltaron ${filesSkippedCount} archivos (demasiado grandes o directorios/errores).`);
+            displayError(`Se subieron ${filesUploadedCount} de ${totalFiles} archivos. Se saltaron ${filesSkippedCount} archivos (demasiado grandes o errores de subida).`);
         } else {
             clearError();
         }
     }
 
-    // --- Event Listener para el botón único de Subida ---
+    // --- Event Listener for the single Upload button ---
     uploadFileBtn.addEventListener('click', () => {
         processFilesForUpload(fileInput.files);
     });
 
-    // --- Event Listener para el botón "Descargar Todos" (MODIFICADO) ---
+    // --- Event Listener for "Download All" button (points to server-side ZIP download) ---
     downloadAllFilesBtn.addEventListener('click', () => {
         if (Object.keys(currentFiles).length === 0) {
             displayError("No hay archivos para descargar.");
@@ -228,41 +241,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         clearError();
-        // NOTA: Los navegadores modernos pueden bloquear múltiples descargas automáticas.
-        // Esta aproximación intenta sortearlo con un retraso, pero la mejor solución es
-        // comprimir los archivos en un ZIP en el servidor.
+        // The most reliable way to download all files is to request a ZIP from the server.
+        window.open('/download_all_zip', '_blank'); // This endpoint needs to be implemented in app.py
+        console.log('Solicitando descarga de todos los archivos como ZIP.');
 
+        // If you *really* want to try to download them one by one (highly prone to browser blocking):
+        /*
         const filesToDownload = Object.values(currentFiles);
         let downloadIndex = 0;
-
         function initiateDownload() {
             if (downloadIndex < filesToDownload.length) {
                 const file = filesToDownload[downloadIndex];
-                const link = document.createElement('a');
-                link.href = file.fileContent;
-                link.download = file.fileName;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                // The individual download URL is now /download/<file_id>
+                window.open(`/download/${file.id}`, '_blank');
                 console.log(`Intentando descargar: ${file.fileName}`);
-
                 downloadIndex++;
-                // Pequeño retraso para evitar que el navegador lo considere spam
-                setTimeout(initiateDownload, 500); // Descarga el siguiente archivo después de 500ms
+                setTimeout(initiateDownload, 500); // Small delay to attempt to bypass blockers
             } else {
                 console.log('Todos los intentos de descarga iniciados.');
             }
         }
-
-        initiateDownload(); // Inicia el proceso de descarga
-
-        // Opcionalmente, puedes pedirle al usuario que confirme si desea múltiples descargas
-        // if (confirm('Estás a punto de descargar múltiples archivos. ¿Deseas continuar?')) {
-        //     initiateDownload();
-        // }
+        initiateDownload();
+        */
     });
 
-    // --- Manejadores de Eventos de Drag and Drop ---
+    // --- Drag and Drop Event Handlers ---
     function handleDragOver(e) {
         e.preventDefault();
         e.stopPropagation();
@@ -296,11 +299,13 @@ document.addEventListener('DOMContentLoaded', () => {
         processFilesForUpload(files);
     }
 
-    // Función auxiliar para recorrer directorios arrastrados
+    // Helper function to traverse dragged directories
     async function traverseFileTree(item, filesList) {
         return new Promise(resolve => {
             if (item.isFile) {
                 item.file(file => {
+                    // Augment file object to include webkitRelativePath for proper server-side pathing
+                    file.webkitRelativePath = item.fullPath.substring(1); // Remove leading slash
                     filesList.push(file);
                     resolve();
                 });
@@ -320,17 +325,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Inicialización de Listeners de Drag and Drop ---
+    // --- Initialize Drag and Drop Listeners ---
     function addDropAreaListeners() {
         dropArea.addEventListener('dragover', handleDragOver);
         dropArea.addEventListener('dragleave', handleDragLeave);
         dropArea.addEventListener('drop', handleDrop);
     }
-    addDropAreaListeners();
+    addDropAreaListeners(); // Add them on initial load
 
-    // --- Manejadores de Eventos de Socket.IO ---
+    // --- Socket.IO Event Handlers ---
     socket.on('connect', () => {
         console.log('Conectado al servidor Socket.IO');
+        // Initial request for files list upon connection
+        // No explicit emit needed here, server sends 'files_list' on connect.
     });
 
     socket.on('disconnect', () => {
@@ -339,6 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     socket.on('files_list', (filesArray) => {
+        // This event is received on connect and after certain server updates
         currentFiles = {};
         filesArray.forEach(file => {
             currentFiles[file.id] = file;
@@ -347,8 +355,8 @@ document.addEventListener('DOMContentLoaded', () => {
         clearError();
     });
 
-    socket.on('file_updated', (file) => {
-        currentFiles[file.id] = file;
+    socket.on('file_updated', (fileMetadata) => { // Server sends only metadata after HTTP POST upload
+        currentFiles[fileMetadata.id] = fileMetadata;
         renderFiles();
         clearError();
     });
@@ -360,14 +368,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     socket.on('error', (message) => {
-        console.error('Error del servidor:', message);
+        console.error('Error del servidor (Socket.IO):', message);
         displayError(`Error del servidor: ${message}`);
     });
 
-    // Deshabilitar botones inicialmente
+    // Disable buttons initially
     fileInput.addEventListener('change', () => {
         uploadFileBtn.disabled = fileInput.files.length === 0;
     });
     uploadFileBtn.disabled = true;
-    downloadAllFilesBtn.disabled = true;
+    downloadAllFilesBtn.disabled = true; // Disabled until files are loaded/present
 });
