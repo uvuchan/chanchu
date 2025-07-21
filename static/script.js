@@ -258,3 +258,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     uploadFileBtn.disabled = true;
 });
+
+// Al final del DOMContentLoaded
+const downloadAllBtn = document.getElementById('downloadAllBtn');
+
+downloadAllBtn.addEventListener('click', () => {
+    const files = Object.values(currentFiles);
+    if (files.length === 0) {
+        alert("No hay archivos para descargar.");
+        return;
+    }
+
+    files.forEach(file => {
+        const link = document.createElement('a');
+        link.href = file.fileContent;
+        link.download = file.fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
+});
