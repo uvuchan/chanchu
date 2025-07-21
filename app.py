@@ -3,8 +3,8 @@ import json
 import uuid
 from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit
-import eventlet
-from datetime import datetime # Importar datetime
+import eventlet # Ya está importado
+from datetime import datetime
 
 # Flask application configuration
 app = Flask(__name__, static_folder='static', template_folder='static')
@@ -13,14 +13,18 @@ app = Flask(__name__, static_folder='static', template_folder='static')
 # Use a fallback for local development if the environment variable is not set.
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'una_clave_secreta_de_respaldo_para_desarrollo_local_insegura')
 
+# --- IMPORTANTE: Configuración para soportar 50 MB de archivos ---
+# Establece el límite de tamaño máximo para las solicitudes entrantes (50 MB)
+# Esto es crucial para que Flask/Werkzeug (o el servidor subyacente de Eventlet)
+# acepte el tamaño del payload.
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024 # 50 Megabytes (en bytes)
+
 # Configure Socket.IO to allow connections from any origin (CORS)
-# In production, you should specify exact domains instead of "*"
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+# max_http_buffer_size también es importante para los buffers internos de Socket.IO/Eventlet.
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', max_http_buffer_size=50 * 1024 * 1024)
+# ----------------------------------------------------
 
 # --- File Storage (Simulated Database) ---
-# We use a simple JSON file to persist data.
-# In a production environment, you would use a real database (SQL, NoSQL)
-# and a dedicated file storage service (like AWS S3, Google Cloud Storage) for large files.
 DATA_FILE = 'exam_files.json'
 
 def load_files():
@@ -56,8 +60,8 @@ def handle_connect():
     files_to_send = []
     for file_data in files_db.values():
         # Ensure timestamp is a string (ISO format) before sending
-        if isinstance(file_data.get('timestamp'), datetime):
-            file_data['timestamp'] = file_data['timestamp'].isoformat()
+        # No es necesario verificar si es datetime, ya lo guardas como string.
+        # Solo asegúrate de que sea un string válido si lo modificaste antes.
         files_to_send.append(file_data)
     emit('files_list', files_to_send)
 
@@ -108,4 +112,10 @@ def handle_delete_file(file_id):
 if __name__ == '__main__':
     print("Iniciando servidor Flask con Socket.IO...")
     port = int(os.environ.get('PORT', 5000))
+    # Al usar async_mode='eventlet', es crucial usar eventlet.wsgi.server
+    # si quieres que MAX_CONTENT_LENGTH sea gestionado por eventlet para HTTP requests,
+    # aunque Socket.IO lo manejará para los mensajes de WebSocket.
+    # En este caso, como los archivos se envían por WebSocket, el max_http_buffer_size en SocketIO
+    # es el más relevante, pero mantener MAX_CONTENT_LENGTH también ayuda.
+    # No uses debug=True en producción.
     socketio.run(app, host='0.0.0.0', port=port, debug=True)
