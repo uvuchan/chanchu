@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Elements ---
-    // const userIdDisplay = document.getElementById('userIdDisplay'); // ELIMINADO
     const fileInput = document.getElementById('fileInput');
     const uploadFileBtn = document.getElementById('uploadFileBtn');
     const uploadingMessage = document.getElementById('uploadingMessage');
@@ -17,15 +16,13 @@ document.addEventListener('DOMContentLoaded', () => {
         userId = crypto.randomUUID(); // Genera un ID de usuario único
         localStorage.setItem('exam_app_userId', userId);
     }
-    // No hay necesidad de actualizar userIdDisplay ya que fue eliminado del DOM.
-    // userIdDisplay.textContent = userId.substring(0, 8) + '...';
 
     // --- Configuración de Socket.IO ---
     const socket = io();
 
     let currentFiles = {};
 
-    // --- Funciones de Utilidad (sin cambios significativos) ---
+    // --- Funciones de Utilidad ---
     function showMessage(element, message, isError = false) {
         element.textContent = message;
         if (isError) {
@@ -95,7 +92,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const li = document.createElement('li');
                 li.className = `file-item`;
                 
-                // Asegurarse de que el userId se muestre completo si no hay dónde acortarlo
                 const uploadedByFull = file.uploadedBy || 'Desconocido';
 
                 const fileDate = file.timestamp ? new Date(file.timestamp).toLocaleString() : 'N/A';
@@ -167,6 +163,9 @@ document.addEventListener('DOMContentLoaded', () => {
         let filesSkippedCount = 0;
         const totalFiles = filesToProcess.length;
 
+        // Nuevo: Define el tamaño máximo de archivo en bytes (50 MB)
+        const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+
         for (let i = 0; i < totalFiles; i++) {
             const file = filesToProcess[i];
 
@@ -175,7 +174,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 continue;
             }
 
-            if (file.size > 20 * 1024 * 1024) {
+            // --- Límite de tamaño de archivo ---
+            if (file.size > MAX_FILE_SIZE) { // Usa la constante MAX_FILE_SIZE
                 console.warn(`Archivo ${file.name} es demasiado grande (${(file.size / (1024 * 1024)).toFixed(2)}MB). Saltando.`);
                 filesSkippedCount++;
                 continue;
@@ -303,7 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     addDropAreaListeners();
 
-    // --- Manejadores de Eventos de Socket.IO (sin cambios) ---
+    // --- Manejadores de Eventos de Socket.IO ---
     socket.on('connect', () => {
         console.log('Conectado al servidor Socket.IO');
     });
