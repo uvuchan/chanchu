@@ -28,9 +28,15 @@
             <span id="errorText" class="error-text-inline"></span>
         </div>
 
-        <!-- Sección de Subida de Archivos/Directorios -->
+        <!-- Zona Drag & Drop -->
         <section class="section-upload">
             <h2 class="section-title">Subir Archivo o Directorio</h2>
+
+            <!-- Zona Drag & Drop -->
+            <div id="dropZone" class="drop-zone">
+                Arrastra aquí archivos o directorios para subirlos
+            </div>
+
             <div class="upload-controls">
                 <input
                     type="file"
@@ -44,11 +50,12 @@
                     Subir
                 </button>
             </div>
+
             <p id="uploadingMessage" class="uploading-message hidden">Por favor, espere mientras se suben los archivos...</p>
         </section>
 
         <div class="toolbar">
-            <button id="downloadAllBtn" class="btn btn-secondary">📥 Descargar Todos</button>
+            <button id="downloadAllBtn" class="btn btn-secondary">Descargar Todos</button>
         </div>
 
         <!-- Sección de Lista de Archivos -->

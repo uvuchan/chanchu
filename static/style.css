@@ -165,6 +165,25 @@
     border: 1px solid #ddd;
     border-radius: 4px;
 }
+
+.drop-zone {
+    border: 2px dashed #007bff;
+    border-radius: 8px;
+    padding: 30px;
+    text-align: center;
+    color: #007bff;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 1rem;
+    transition: background-color 0.3s ease;
+}
+
+.drop-zone.dragover {
+    background-color: #e0f0ff;
+    border-color: #0056b3;
+    color: #0056b3;
+}
+
 /* Estilos de sección */
 .section-upload {
     margin-bottom: 2rem; /* mb-8 */
